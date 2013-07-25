@@ -40,7 +40,14 @@ def get_product_tree(URL):
                     .find_all('dd')
 
     for c in soup_list:
-        yield next(c.a.stripped_strings)
+        quantity = c.find_all('span', class_='grey')
+        yield {
+            'text': next(c.a.stripped_strings),
+            'href': c.a['href'],
+            'quantity': quantity
+            #'quantity': [sibling for sibling in c.a.next_siblings if sibling][1]
+            #'quantity': [sibling for sibling in c.a.span if sibling]
+        }
         #yield c.a.get_text(strip=True)
 
 
