@@ -7,17 +7,6 @@ URL = 'http://www.newegg.com'
 URL = 'http://www.newegg.com/Open-Box/Store?Type=OPENBOX'
 
 
-
-#products_soup = [BeautifulSoup(p) for p in products]
-#print list(products_soup)[0]
-
-#print products[0]
-def get_products(URL):
-    r = requests.get(URL).text
-    soup = BeautifulSoup(r)
-    return soup.select(".productCells .unit_gallery .wrap_inner")
-
-
 class Product(object):
 
     def __init__(self, tag):
@@ -37,14 +26,26 @@ class Product(object):
         return self.get_desc()
 
 
-#descs = get_desc(products)
-#print list(descs)
+def get_products(URL):
+    r = requests.get(URL).text
+    soup = BeautifulSoup(r)
+    return soup.select(".productCells .unit_gallery .wrap_inner")
 
-products = [Product(product) for product in get_products(URL)]
-#s = Product(URL)
-#print list(s.get_products())
+
+def get_product_tree(URL):
+    r = requests.get(URL).text
+    soup = BeautifulSoup(r)
+    soup_list = soup.find("div", class_='blaNavigation') \
+                    .find('dl', class_='categoryList') \
+                    .find_all('dd')
+
+    for c in soup_list:
+        yield next(c.a.stripped_strings)
+        #yield c.a.get_text(strip=True)
+
+
 from pprint import pprint
-pprint(products)
-#desc = descblock.find('span', class_='descText').text
-
-#print soup.prettify()
+#products = [Product(product) for product in get_products(URL)]
+tree = get_product_tree(URL)
+#pprint(products)
+pprint(list(tree))
