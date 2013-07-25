@@ -38,9 +38,10 @@ def get_product_tree(URL):
     soup_list = soup.find("div", class_='blaNavigation') \
                     .find('dl', class_='categoryList') \
                     .find_all('dd')
-
+    import re
     for c in soup_list:
-        quantity = c.find_all('span', class_='grey')
+        quantity = [int(re.match('\((\d+)\)', text).group(1)) for text in \
+                [tag.get_text(strip=True) for tag in c.find_all('span', class_='grey')]][0]
         yield {
             'text': next(c.a.stripped_strings),
             'href': c.a['href'],
