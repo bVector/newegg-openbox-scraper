@@ -1,7 +1,10 @@
+# -*- coding: utf-8 -*-
+from __future__ import division, absolute_import
 from bs4 import BeautifulSoup
 
 import grequests
 import requests
+from pprint import pprint
 
 URL = 'http://www.newegg.com'
 URL = 'http://www.newegg.com/Open-Box/Store?Type=OPENBOX'
@@ -14,25 +17,24 @@ class Product(object):
         pass
 
     def get_desc(self):
-        return self.tag.find('div', class_='wrap_description') \
-            .find('span', class_='descText') \
+        return self.tag.find('span', class_='itemDescription') \
             .text \
             .rsplit('Open Box: ', 1)[1]
 
     def __str__(self):
-        return self.get_desc()
+        return unicode(self).encode('utf-8')
 
-    def __repr__(self):
+    def __unicode__(self):
         return self.get_desc()
 
 
 def get_products(URL):
     r = requests.get(URL).text
     soup = BeautifulSoup(r)
-    return soup.select(".productCells .unit_gallery .wrap_inner")
+    return soup.select(".itemCell")
 
 
-def get_product_tree(URL):
+def get_product_categories(URL):
     r = requests.get(URL).text
     soup = BeautifulSoup(r)
     soup_list = soup.find("div", class_='blaNavigation') \
@@ -40,20 +42,32 @@ def get_product_tree(URL):
                     .find_all('dd')
     import re
     for c in soup_list:
-        quantity = [int(re.match('\((\d+)\)', text).group(1)) for text in \
-                [tag.get_text(strip=True) for tag in c.find_all('span', class_='grey')]][0]
+        quantity = int(
+            re.match(
+                '\((\d+)\)',
+                c.find('span', class_='grey')
+                .get_text(strip=True)
+            )
+            .group(1)
+        )
+
         yield {
             'text': next(c.a.stripped_strings),
             'href': c.a['href'],
             'quantity': quantity
-            #'quantity': [sibling for sibling in c.a.next_siblings if sibling][1]
-            #'quantity': [sibling for sibling in c.a.span if sibling]
         }
-        #yield c.a.get_text(strip=True)
 
 
-from pprint import pprint
-#products = [Product(product) for product in get_products(URL)]
-tree = get_product_tree(URL)
-#pprint(products)
-pprint(list(tree))
+products = list()
+
+for category in get_product_categories(URL):
+    products.extend(
+        [Product(product) for product in get_products(category['href'])]
+    )
+
+for product in products:
+    try:
+        pprint(str(product))
+    except UnicodeEncodeError:
+        import chardet
+        pprint(chardet.detect(product))
