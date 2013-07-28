@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, absolute_import
-from bs4 import BeautifulSoup
 from pprint import pprint
+from decimal import *
+from bs4 import BeautifulSoup
 import requests
 
 #URL = 'http://www.newegg.com'
@@ -19,11 +20,35 @@ class Product(object):
             .text \
             .rsplit('Open Box: ', 1)[1]
 
+    # todo: make this into a @property
+    def get_price_before(self):
+        try:
+            return self.tag.find('li', class_='price-was') \
+                .get_text(strip=True) \
+                .rsplit('$', 1)[1] \
+                .replace(",", "") # remove commas
+        except IndexError:
+            return None
+
+     # todo: make this into a @property
+    def get_price_now(self):
+        tag = self.tag.find('li', class_='price-current')
+        currency = tag.find('span', class_='price-current-label') \
+                .get_text(strip=True)
+        dollars = tag.find('strong').get_text(strip=True)
+        cents = tag.find('sup').get_text(strip=True)
+
+        price = ''.join([currency, dollars, cents])
+        price = price.replace(",", "") # remove commas
+
+        return Decimal(price)
+
     def __str__(self):
         return unicode(self).encode('utf-8')
 
     def __unicode__(self):
-        return self.get_desc()
+        response = "%s: was $%s now $%s" % (self.get_desc(), self.get_price_before(), self.get_price_now())
+        return response
 
 
 def get_products(URL):
