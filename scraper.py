@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, absolute_import
 from bs4 import BeautifulSoup
-
-import grequests
-import requests
-import tornado.httpclient
-import tornado.ioloop
 from pprint import pprint
+import requests
 
-URL = 'http://www.newegg.com'
+#URL = 'http://www.newegg.com'
 URL = 'http://www.newegg.com/Open-Box/Store?Type=OPENBOX'
 
 
@@ -36,16 +32,6 @@ def get_products(URL):
     return soup.select(".itemCell")
 
 
-
-
-import gevent
-from tornado import gen
-def fetch_page(URL):
-    http = tornado.httpclient.AsyncHTTPClient()
-    fetch = http.fetch(URL, get_product_categories)
-    return gen.Task(fetch)
-
-#souped = (grequests.get(c['href']) for c in get_product_categories(URL))
 class Category(object):
 
     def __init__(self, **kwargs):
@@ -60,64 +46,47 @@ class Category(object):
         return self.text
 
 
-class Categories(object):
-    def __init__(self, URL):
-        self.URL = URL
+def grab_categories(URL):
+    r = requests.get(URL)
 
-    def fetch(self):
-        import requests
-        r = requests.get(self.URL)
-        return r.text
-
-    def __iter__(self):
-        return iter(self.parse())
-
-    def parse(self):
-        #r = requests.get(URL).text
-        self.categories = list()
-        soup = BeautifulSoup(self.fetch())
-        soup_list = soup.find("div", class_='blaNavigation') \
-                        .find('dl', class_='categoryList') \
-                        .find_all('dd')
-        import re
-        for c in soup_list:
-            quantity = int(
-                re.match(
-                    '\((\d+)\)',
-                    c.find('span', class_='grey')
-                    .get_text(strip=True)
-                )
-                .group(1)
+    soup = BeautifulSoup(r.text)
+    soup_list = soup.find("div", class_='blaNavigation') \
+                    .find('dl', class_='categoryList') \
+                    .find_all('dd')
+    import re
+    for c in soup_list:
+        quantity = int(
+            re.match(
+                '\((\d+)\)',
+                c.find('span', class_='grey')
+                .get_text(strip=True)
             )
+            .group(1)
+        )
 
-            self.categories.append(Category(**{
-                'text': next(c.a.stripped_strings),
-                'href': c.a['href'],
-                'quantity': quantity
-            }))
+        yield Category(**{
+            'text': next(c.a.stripped_strings),
+            'href': c.a['href'],
+            'quantity': quantity
+        })
 
-        return self.categories
-
-
-
-
-products = list()
-cats = Categories(URL)
 
 def add_products_to_categories(categories):
     for c in categories:
-        items = [Product(product) for product in get_products(c.href)]
-        c.products = items
+        c.products = [Product(product) for product in get_products(c.href)]
         yield c
 
-cats = add_products_to_categories(cats)
+
+products = list()
+cats = grab_categories(URL)
+cats = list(add_products_to_categories(cats))
+total_products = sum(len(c.products) for c in cats)
 
 for c in cats:
-    print("'%s' has products attribute, type %s, with %s items" %\
-            (c.text, type(c.products),\
-            len(c.products)))
+    print("\n'%s' has %s of %s products available for discount at %s\n" %
+          (c.text, len(c.products), total_products, c.href))
+
     try:
-        print(c.text)
         for product in c.products:
             try:
                 pprint(str(product))
@@ -127,3 +96,6 @@ for c in cats:
                 pprint(chardet.detect(product))
     except TypeError:
         print "no items for %s" % c.text
+
+print("There were %s items available on newegg for openbox items." %
+      total_products)
