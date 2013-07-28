@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, absolute_import
 from pprint import pprint
-from decimal import *
+from decimal import Decimal
 from bs4 import BeautifulSoup
 import requests
 
@@ -26,7 +26,7 @@ class Product(object):
             return self.tag.find('li', class_='price-was') \
                 .get_text(strip=True) \
                 .rsplit('$', 1)[1] \
-                .replace(",", "") # remove commas
+                .replace(",", "")  # remove commas
         except IndexError:
             return None
 
@@ -34,12 +34,12 @@ class Product(object):
     def get_price_now(self):
         tag = self.tag.find('li', class_='price-current')
         currency = tag.find('span', class_='price-current-label') \
-                .get_text(strip=True)
+            .get_text(strip=True)
         dollars = tag.find('strong').get_text(strip=True)
         cents = tag.find('sup').get_text(strip=True)
 
         price = ''.join([currency, dollars, cents])
-        price = price.replace(",", "") # remove commas
+        price = price.replace(",", "")  # remove commas
 
         return Decimal(price)
 
@@ -47,7 +47,8 @@ class Product(object):
         return unicode(self).encode('utf-8')
 
     def __unicode__(self):
-        response = "%s: was $%s now $%s" % (self.get_desc(), self.get_price_before(), self.get_price_now())
+        response = "%s: was $%s now $%s" % \
+            (self.get_desc(), self.get_price_before(), self.get_price_now())
         return response
 
 
